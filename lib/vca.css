@@ -1,0 +1,80 @@
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --bg: #faf8f3; --paper: #ffffff; --ink: #1f1d1a; --muted: #6b665d;
+  --grid: #ebe6db; --axis: #9a9385; --border: #e2dccf;
+  --c1: #2563c9; --c2: #d9731a; --c3: #8a2fb8; --c4: #1f9a5b; --c5: #c8323c; --c6: #0e8f9c;
+  --f1: rgba(37, 99, 201, 0.13); --f2: rgba(217, 115, 26, 0.13); --f3: rgba(138, 47, 184, 0.13);
+  --f4: rgba(31, 154, 91, 0.13); --f5: rgba(200, 50, 60, 0.13); --f6: rgba(14, 143, 156, 0.13);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #171614; --paper: #201f1c; --ink: #ece8df; --muted: #a39d91;
+    --grid: #2d2b27; --axis: #6f6a60; --border: #36332e;
+    --c1: #6ea2ff; --c2: #ffa257; --c3: #cf86f5; --c4: #5fd39a; --c5: #ff7a80; --c6: #4fd0dc;
+    --f1: rgba(110, 162, 255, 0.17); --f2: rgba(255, 162, 87, 0.17); --f3: rgba(207, 134, 245, 0.17);
+    --f4: rgba(95, 211, 154, 0.17); --f5: rgba(255, 122, 128, 0.17); --f6: rgba(79, 208, 220, 0.17);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font-family: "Crimson Pro", Georgia, serif; font-size: 18px; line-height: 1.45; }
+main { max-width: 1120px; margin: 0 auto; padding: 14px 16px 40px; }
+a { color: var(--c1); }
+nav.top { display: flex; justify-content: space-between; gap: 10px; font-size: 0.95rem; margin-bottom: 8px; }
+nav.top a { text-decoration: none; }
+nav.top .mid { color: var(--muted); font-style: italic; text-align: center; flex: 1; }
+header h1 { font-size: 1.7rem; font-weight: 600; margin: 0 0 2px; letter-spacing: -0.01em; line-height: 1.2; }
+header p.kicker { margin: 0; color: var(--muted); font-style: italic; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; margin-top: 14px; }
+@media (max-width: 880px) { .layout { grid-template-columns: 1fr; } }
+.stage { display: grid; gap: 10px; grid-template-columns: 1fr; }
+.stage.two { grid-template-columns: 1fr 1fr; }
+@media (max-width: 640px) { .stage.two { grid-template-columns: 1fr; } }
+.planebox { background: var(--paper); border: 1px solid var(--border); border-radius: 10px; padding: 4px; position: relative; }
+.planebox .ptitle { position: absolute; top: 8px; left: 12px; font-style: italic; color: var(--muted); font-size: 0.95rem; pointer-events: none; }
+svg.plane { width: 100%; height: auto; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+svg.plane text { font-family: "Crimson Pro", Georgia, serif; }
+.panel { background: var(--paper); border: 1px solid var(--border); border-radius: 10px; padding: 12px 15px; }
+.panel + .panel { margin-top: 12px; }
+.panel h2 { font-size: 1.05rem; margin: 10px 0 6px; font-weight: 600; }
+.panel h2:first-child { margin-top: 0; }
+.readout { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.78rem; line-height: 1.65; }
+.readout .row { display: grid; grid-template-columns: 3.4em 1fr; gap: 6px; }
+.readout .lab { font-family: "Crimson Pro", serif; font-style: italic; font-size: 1.05rem; font-weight: 600; }
+.readout .sub { color: var(--muted); }
+.readout .big { font-family: "Crimson Pro", serif; font-size: 1.05rem; }
+.readout hr { border: 0; border-top: 1px dashed var(--border); margin: 8px 0; }
+.readout .ok { color: var(--c4); } .readout .bad { color: var(--c5); }
+.controls label.chk { display: flex; align-items: center; gap: 8px; margin: 3px 0; cursor: pointer; }
+.controls input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--c3); }
+.controls .sl { display: grid; grid-template-columns: auto 1fr 3.6em; gap: 8px; align-items: center; margin: 4px 0; font-size: 0.95rem; }
+.controls .sl input { width: 100%; accent-color: var(--c3); }
+.controls .sl .v { font-family: "JetBrains Mono", monospace; font-size: 0.75rem; text-align: right; color: var(--muted); }
+.controls .sel { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 0.95rem; }
+.controls select { font: inherit; font-size: 0.92rem; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); flex: 1; min-width: 0; }
+.controls .note { font-size: 0.9rem; color: var(--muted); font-style: italic; margin: 4px 0; }
+.btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+button { font: inherit; font-size: 0.92rem; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); cursor: pointer; }
+button:hover { border-color: var(--axis); }
+button.on { background: var(--c3); color: #fff; border-color: var(--c3); }
+.explain { margin-top: 20px; max-width: 780px; }
+.explain h2 { font-size: 1.25rem; margin: 18px 0 6px; }
+.explain p { margin: 0 0 10px; }
+.m { font-style: italic; }
+.k1 { color: var(--c1); } .k2 { color: var(--c2); } .k3 { color: var(--c3); } .k4 { color: var(--c4); } .k5 { color: var(--c5); } .k6 { color: var(--c6); }
+footer { margin-top: 26px; color: var(--muted); font-size: 0.9rem; font-style: italic; border-top: 1px solid var(--border); padding-top: 10px; }
+footer nav { display: flex; justify-content: space-between; font-style: normal; margin-bottom: 6px; }
+/* contents page */
+.toc { columns: 2 330px; column-gap: 28px; margin-top: 18px; }
+.toc section { break-inside: avoid; margin-bottom: 18px; background: var(--paper); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.toc h2 { font-size: 1.1rem; margin: 0 0 4px; }
+.toc h2 span { color: var(--muted); font-weight: 400; }
+.toc ul { margin: 0; padding-left: 18px; }
+.toc li { margin: 3px 0; }
+.toc li .d { color: var(--muted); font-size: 0.92rem; }
+/* two-plane pages: planes full width, panels below side by side */
+.layout.wide { grid-template-columns: 1fr; }
+.layout.wide aside { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.layout.wide aside .panel + .panel { margin-top: 0; }
+@media (max-width: 700px) { .layout.wide aside { grid-template-columns: 1fr; } .layout.wide aside .panel + .panel { margin-top: 12px; } }

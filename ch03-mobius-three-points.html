@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Möbius map from three points — Visual Complex Analysis</title>
+<meta name="description" content="Send 0, 1, ∞ anywhere; see the grid follow.">
+<link rel="stylesheet" href="lib/vca.css">
+<script src="lib/vca.js"></script>
+</head>
+<body>
+<script>
+const { C, num, row } = VCA;
+const P = VCA.page({
+  id: "ch03-mobius-three-points",
+  kicker: 'Drag where <span class="k4">0</span>, <span class="k2">1</span> and <span class="k5">∞</span> should go. The unique Möbius map does the rest.',
+  planes: [{ R: 2.5, title: "z-plane" }, { R: 3, title: "w = M(z)", unit: false }],
+  explain: `
+  <h2>Three points determine a Möbius map</h2>
+  <p>A Möbius transformation <i>M</i>(<i>z</i>) = (<i>az</i> + <i>b</i>)/(<i>cz</i> + <i>d</i>) has three degrees of freedom: four complex coefficients, up to a common factor. So it can send any three distinct points anywhere, and it is then completely determined. Here <i>M</i> sends 0, 1, ∞ to the three dots you drag.</p>
+  <p>Because Möbius maps send circles to circles (counting lines as circles through ∞), the real axis — the circle through 0, 1 and ∞ — becomes the purple circle through your three points. The polar grid of the z-plane becomes a net of circles: the rays from 0 (which pass through 0 and ∞) become circles through <span class="k4">M(0)</span> and <span class="k5">M(∞)</span>. The letter F shows that orientation is preserved, so there is no mirror image.</p>
+  <h2>Classifying by the trace</h2>
+  <p>Normalise so that <i>ad</i> − <i>bc</i> = 1. Then the type depends only on τ = <i>a</i> + <i>d</i>: elliptic if τ is real with |τ| &lt; 2, parabolic if τ = ±2, hyperbolic if τ is real with |τ| &gt; 2, and loxodromic otherwise.</p>`,
+});
+const [zp, wp] = P.planes, ui = P.ui;
+wp.handle("q1", { x: -1, y: -0.5 }, { color: "c4", label: "M(0)" });
+wp.handle("q2", { x: 0.6, y: -0.8 }, { color: "c2", label: "M(1)" });
+wp.handle("q3", { x: 1.2, y: 1.3 }, { color: "c5", label: "M(∞)" });
+const gsel = ui.select("Grid", [["polar", "Polar"], ["cart", "Cartesian"]], "polar");
+ui.buttons([["Identity", () => { wp.set("q1", C.ZERO); wp.set("q2", C.ONE); wp.set("q3", { x: 50, y: 0 }); }], ["Reset", () => { wp.set("q1", { x: -1, y: -0.5 }); wp.set("q2", { x: 0.6, y: -0.8 }); wp.set("q3", { x: 1.2, y: 1.3 }); }]]);
+const Fshape = [[[0.3, 0.3], [0.3, 1.1]], [[0.3, 1.1], [0.8, 1.1]], [[0.3, 0.7], [0.65, 0.7]]].map(s => s.map(([x, y]) => ({ x: x - 0.9, y })));
+
+VCA.run(() => {
+  const q1 = wp.get("q1"), q2 = wp.get("q2"), q3 = wp.get("q3");
+  const lam = C.div(C.sub(q2, q1), C.sub(q3, q2));
+  let a = C.mul(q3, lam), b = q1, c = lam, d = C.ONE;
+  const M = z => C.div(C.add(C.mul(a, z), b), C.add(C.mul(c, z), d));
+  const curves = [];
+  if (gsel.value === "polar") {
+    for (const r of [0.25, 0.5, 1, 1.5, 2, 3]) curves.push([t => C.polar(r, VCA.TAU * t), r === 1 ? "c6" : "c1", r === 1 ? 2.2 : 1.3]);
+    for (let k = 0; k < 12; k++) if (k % 6) curves.push([t => C.polar(Math.tan(t * 1.55), k * Math.PI / 6), "c2", 1.3]);
+  } else {
+    for (let v = -3; v <= 3; v += 0.5) { if (v) curves.push([t => ({ x: Math.tan(1.55 * (2 * t - 1)), y: v }), "c1", 1.3]); curves.push([t => ({ x: v, y: Math.tan(1.55 * (2 * t - 1)) }), "c2", 1.3]); }
+  }
+  curves.push([t => ({ x: Math.tan(1.5707 * (2 * t - 1)), y: 0 }), "c3", 3]);
+  for (const [g, col, w] of curves) { zp.curve(g, 0, 1, { color: col, width: w, n: 200 }); wp.curve(t => M(g(t)), 0, 1, { color: col, width: w, n: 500 }); }
+  for (const s of Fshape) { zp.line(s[0], s[1], { color: "ink", width: 3.5 }); wp.curve(t => M(C.lerp(s[0], s[1], t)), 0, 1, { color: "ink", width: 3.5, n: 40 }); }
+  zp.dot(C.ZERO, { color: "c4", r: 6 }); zp.dot(C.ONE, { color: "c2", r: 6 });
+  zp.text({ x: 0, y: 0 }, "0", { color: "c4", dx: -12, dy: 20, bold: true });
+  zp.text({ x: 1, y: 0 }, "1", { color: "c2", dx: 8, dy: 20, bold: true });
+  zp.text(zp.W(560, 40), "∞ →", { color: "c5", bold: true });
+  // normalise det = 1
+  const det = C.sub(C.mul(a, d), C.mul(b, c)), sq = C.sqrt(det);
+  [a, b, c, d] = [a, b, c, d].map(v => C.div(v, sq));
+  const tr = C.add(a, d), t2 = C.mul(tr, tr);
+  const real = Math.abs(t2.y) < 1e-3;
+  const type = !real ? "Loxodromic" : Math.abs(t2.x - 4) < 1e-3 ? "Parabolic" : t2.x < 4 && t2.x >= 0 ? "Elliptic" : t2.x > 4 ? "Hyperbolic" : "Loxodromic";
+  // fixed points: c z² + (d − a) z − b = 0
+  const disc = C.sqrt(C.add(C.mul(C.sub(d, a), C.sub(d, a)), C.scale(C.mul(b, c), 4)));
+  const fp = [C.div(C.add(C.sub(a, d), disc), C.scale(c, 2)), C.div(C.sub(C.sub(a, d), disc), C.scale(c, 2))];
+  fp.forEach(z => { if (C.ok(z) && C.abs(z) < 10) { zp.cross(z, { color: "c5" }); wp.cross(z, { color: "c5" }); } });
+  P.read(row("a", "", C.fmt(a)) + row("b", "", C.fmt(b)) + row("c", "", C.fmt(c)) + row("d", "", C.fmt(d)) +
+    `<hr>${row("τ", "", C.fmt(tr))}${row("type", "", `<span class="big">${type}</span>`)}<div class="sub">Fixed points (red ×): ${fp.map(z => C.fmt(z)).join(", ")}</div>`);
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Joukowski airfoil — Visual Complex Analysis</title>
+<meta name="description" content="z + 1/z maps a circle to a wing, with Kutta flow.">
+<link rel="stylesheet" href="lib/vca.css">
+<script src="lib/vca.js"></script>
+</head>
+<body>
+<script>
+const { C, num, row } = VCA;
+const P = VCA.page({
+  id: "ch12-joukowski",
+  kicker: 'Drag the centre <span class="k3">c</span> of a circle through 1. The map w = z + 1/z turns it into a wing, and carries the flow along.',
+  planes: [{ R: 2.6, title: "z-plane: flow past a circle" }, { R: 2.8, title: "w = z + 1/z: flow past an airfoil", unit: false }],
+  explain: `
+  <h2>From circle to wing</h2>
+  <p>The Joukowski map <i>J</i>(<i>z</i>) = <i>z</i> + 1/<i>z</i> squashes the unit circle onto the segment [−2, 2]. Take instead a circle through <i>z</i> = 1 that encloses −1, with its centre slightly up and to the left. Its image is a curved, round-nosed profile with a sharp trailing edge at <i>J</i>(1) = 2: a Joukowski airfoil. The sharp edge appears because <i>J′</i>(1) = 0, so angles at 1 are doubled.</p>
+  <h2>Transplanting the flow</h2>
+  <p>Conformal maps carry ideal flows to ideal flows. Solve the easy problem (flow past a circle at angle of attack α, with circulation Γ) and map the streamlines through <i>J</i> to get the flow past the wing. For an arbitrary Γ the fluid would whip around the sharp trailing edge with infinite speed. The <b>Kutta condition</b> picks the single Γ that puts a stagnation point exactly at <i>z</i> = 1, so the flow leaves the trailing edge smoothly. That circulation is what produces the lift, ρ<i>U</i>|Γ| per unit span.</p>`,
+});
+const [zp, wp] = P.planes, ui = P.ui;
+zp.handle("c", { x: -0.12, y: 0.12 }, { color: "c3", label: "c", constrain: p => ({ x: Math.max(-0.5, Math.min(0, p.x)), y: Math.max(-0.4, Math.min(0.5, p.y)) }) });
+const AL = ui.slider("Angle of attack α", -15, 25, 0.5, 8, v => v + "°");
+const kutta = ui.check("Kutta condition", true);
+const showP = ui.check("Particles", true);
+const J = z => C.add(z, C.inv(z));
+let parts = [], cache = null;
+const state = () => {
+  const c = zp.get("c"), a = C.dist(C.ONE, c), al = AL.value * Math.PI / 180, th1 = C.arg(C.sub(C.ONE, c));
+  const Gam = kutta.value ? -4 * Math.PI * a * Math.sin(th1 - al) : 0;
+  const ea = C.polar(1, -al), eb = C.polar(a * a, al), g = Gam / VCA.TAU;
+  const W = z => { const d = C.sub(z, c); return C.add(C.add(C.mul(d, ea), C.div(eb, d)), C.mul({ x: 0, y: g }, C.log(d))); };
+  const dW = z => { const d = C.sub(z, c); return C.add(C.sub(ea, C.div(eb, C.mul(d, d))), C.div({ x: 0, y: g }, d)); };
+  return { c, a, al, Gam, W, dW };
+};
+function spawn(p, anywhere) {
+  const al = AL.value * Math.PI / 180, R = zp.R;
+  const s = anywhere ? (Math.random() * 2 - 1) * R : -R - Math.random();
+  p.z = C.rot({ x: s, y: (Math.random() * 2 - 1) * R }, al); p.age = 0; p.tail = [p.z];
+}
+for (let i = 0; i < 200; i++) { const p = {}; spawn(p, true); parts.push(p); }
+const flow = VCA.anim(dt => {
+  const { c, a, dW } = state();
+  const vel = z => { const v = C.conj(dW(z)), m = C.abs(v); return m > 3 ? C.scale(v, 3 / m) : v; };
+  for (const p of parts) {
+    const k1 = vel(p.z), k2 = vel(C.add(p.z, C.scale(k1, dt * 0.3)));
+    p.z = C.add(p.z, C.scale(k2, dt * 0.6)); p.age += dt;
+    p.tail.unshift(p.z); if (p.tail.length > 7) p.tail.pop();
+    if (C.dist(p.z, c) < a * 1.01 || C.abs(p.z) > zp.R * 1.6 || p.age > 12 || !C.ok(p.z)) spawn(p, false);
+  }
+});
+ui.toggle("Flow", flow);
+setTimeout(() => flow.start(), 300);
+
+VCA.run(() => {
+  const { c, a, al, Gam, W } = state();
+  const key = [c.x, c.y, AL.value, kutta.value].join();
+  if (!cache || cache.key !== key) {
+    const levels = []; for (let k = -40; k <= 40; k++) levels.push(k * 0.18 + 1e-7);
+    const b = { x0: -3.6, x1: 3.6, y0: -3.6, y1: 3.6 };
+    cache = { key, segs: VCA.contours(z => W(z).y, b, 170, 170, levels, 1.5, z => C.dist(z, c) < a) };
+  }
+  zp.segs(cache.segs, { color: "c1", width: 1.2 });
+  wp.segs(cache.segs, { color: "c1", width: 1.2 }, J);
+  zp.circle(c, a, { color: "ink", width: 2.2, fill: "f5" });
+  wp.curve(t => J(C.add(c, C.polar(a, t))), 0, VCA.TAU, { color: "ink", width: 2.2, fill: "f5", n: 400, jump: Infinity });
+  zp.dot(C.ONE, { color: "c5", r: 5 }); zp.dot({ x: -1, y: 0 }, { color: "muted", r: 4 });
+  wp.dot({ x: 2, y: 0 }, { color: "c5", r: 5 });
+  if (showP.value) for (const p of parts) {
+    zp.path(p.tail, { color: "c3", width: 2, opacity: 0.7 });
+    wp.path(p.tail.map(J), { color: "c3", width: 2, opacity: 0.7 });
+  }
+  P.read(row("c", "c3", `${C.fmt(c)}<br><span class="sub">radius |1 − c| = ${num(a, 3)}</span>`) +
+    row("α", "", `${num(AL.value, 1)}°`) + row("Γ", "", `${num(Gam, 3)} ${kutta.value ? '<span class="ok">(Kutta)</span>' : ""}`) +
+    `<hr><div class="sub">Lift per unit span ∝ ρU|Γ| = ${num(Math.abs(Gam), 3)} (with ρ = U = 1).</div>`);
+});
+
+</script>
+</body>
+</html>

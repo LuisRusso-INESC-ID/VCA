@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Radius of convergence — Visual Complex Analysis</title>
+<meta name="description" content="Why 1/(1+x²) has radius 1: the hidden poles at ±i.">
+<link rel="stylesheet" href="lib/vca.css">
+<script src="lib/vca.js"></script>
+</head>
+<body>
+<script>
+const { C, num, row } = VCA;
+const P = VCA.page({
+  id: "ch09-taylor-radius",
+  kicker: 'Slide the centre <span class="k3">c</span> along the real axis. The Taylor series converges out to the nearest singularity, even one off the real line.',
+  planes: [{ R: 2.6, title: "complex plane: where Tₙ ≈ f" }, { R: 1.9, center: { x: 0, y: 0.6 }, unit: false, realY: true, title: "graph on the real line" }],
+  explain: `
+  <h2>A puzzle from real analysis</h2>
+  <p>The function 1/(1 + <i>x</i>²) is smooth on the whole real line, yet its Taylor series about 0, 1 − <i>x</i>² + <i>x</i>⁴ − …, only converges for |<i>x</i>| &lt; 1. Nothing on the real line explains why.</p>
+  <h2>The complex answer</h2>
+  <p>Cauchy's formula shows that the Taylor series of an analytic function about <i>c</i> converges in the largest disc around <i>c</i> that contains no singularity. For 1/(1 + <i>z</i>²) the singularities are poles at ±<i>i</i>, invisible on the real line but at distance 1 from 0. Move the centre and the radius becomes √(1 + <i>c</i>²), exactly the distance to ±<i>i</i>.</p>
+  <p>On the left, the shaded cells are where the partial sum <i>T<sub>n</sub></i> is already within 0.05 of <i>f</i>. Increase <i>n</i> and they fill up the dashed disc of convergence and no more. On the right, the partial sum (purple) hugs the true graph (blue) inside the interval of convergence and flies off outside it.</p>`,
+});
+const [zp, gp] = P.planes, ui = P.ui;
+const S2 = Math.SQRT1_2;
+const F = {
+  a: ["1/(1 + z²)", [[C.I, { x: 0, y: -0.5 }], [{ x: 0, y: -1 }, { x: 0, y: 0.5 }]]],
+  b: ["1/(1 − z)", [[C.ONE, { x: -1, y: 0 }]]],
+  c: ["1/((z − 2)(z + 1))", [[{ x: 2, y: 0 }, { x: 1 / 3, y: 0 }], [{ x: -1, y: 0 }, { x: -1 / 3, y: 0 }]]],
+  d: ["1/(1 + z⁴)", [0, 1, 2, 3].map(k => { const p = C.polar(1, Math.PI / 4 + k * Math.PI / 2); return [p, C.scale(p, -0.25)]; })],
+};
+const fs = ui.select("f(z)", Object.keys(F).map(k => [k, F[k][0]]), "a");
+const N = ui.slider("Terms n", 0, 40, 1, 8);
+zp.handle("c", { x: 0, y: 0 }, { color: "c3", label: "c", constrain: p => ({ x: Math.max(-2.4, Math.min(2.4, p.x)), y: 0 }) });
+const grow = VCA.anim(() => {}); let acc = 0;
+grow.step = dt => { acc += dt; if (acc > 0.25) { acc = 0; N.value = N.value >= 40 ? 0 : N.value + 1; } };
+ui.toggle("Increase n", grow);
+
+VCA.run(() => {
+  const [name, poles] = F[fs.value], c = zp.get("c"), n = N.value;
+  const f = z => poles.reduce((s, [p, A]) => C.add(s, C.div(A, C.sub(z, p))), C.ZERO);
+  // Taylor coefficients about c: A/(z − p) = −A Σ (z − c)^k / (p − c)^(k+1)
+  const coef = [];
+  for (let k = 0; k <= n; k++) coef.push(poles.reduce((s, [p, A]) => C.sub(s, C.div(A, C.ipow(C.sub(p, c), k + 1))), C.ZERO));
+  const T = z => { let s = C.ZERO, u = C.ONE; const d = C.sub(z, c); for (const a of coef) { s = C.add(s, C.mul(a, u)); u = C.mul(u, d); } return s; };
+  const rho = Math.min(...poles.map(([p]) => C.dist(p, c)));
+  // shade where |T − f| < 0.05
+  const m = 60, step = 2 * zp.R / m; let d = "";
+  for (let j = 0; j < m; j++) for (let i = 0; i < m; i++) {
+    const z = { x: -zp.R + (i + 0.5) * step, y: -zp.R + (j + 0.5) * step };
+    const e = C.dist(T(z), f(z));
+    if (e < 0.05) { const X = zp.X(z.x - step / 2), Y = zp.Y(z.y + step / 2), s = (step * zp.k + 0.5).toFixed(1); d += `M${X.toFixed(1)},${Y.toFixed(1)}h${s}v${s}h-${s}Z`; }
+  }
+  zp.spath(d, { fill: "f4", width: 0, layer: "back" });
+  zp.circle(c, rho, { color: "c3", width: 2, dash: "6 4" });
+  poles.forEach(([p]) => { zp.cross(p, { color: "c5", r: 8 }); zp.line(c, p, { color: "c5", width: 1, dash: "3 3", opacity: 0.6 }); });
+  // graph
+  gp.poly([{ x: c.x - rho, y: -10 }, { x: c.x + rho, y: -10 }, { x: c.x + rho, y: 10 }, { x: c.x - rho, y: 10 }], { fill: "f3", width: 0, layer: "back" });
+  gp.curve(x => ({ x, y: f({ x, y: 0 }).x }), -2.5, 2.5, { color: "c1", width: 2.6, n: 500 });
+  gp.curve(x => ({ x, y: T({ x, y: 0 }).x }), -2.5, 2.5, { color: "c3", width: 2.2, n: 500, jump: 300 });
+  gp.dot({ x: c.x, y: f(c).x }, { color: "c3", r: 5 });
+  P.read(row("f", "", `<span class="big">${name}</span>`) + row("c", "c3", num(c.x)) +
+    `<hr><div>Radius of convergence = distance to nearest pole = <b>${num(rho, 3)}</b></div>` +
+    `<div class="sub">Interval on the real line: (${num(c.x - rho)}, ${num(c.x + rho)})</div>`);
+});
+
+</script>
+</body>
+</html>

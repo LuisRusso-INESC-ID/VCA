@@ -1,0 +1,81 @@
+const { C, num, row } = VCA;
+const P = VCA.page({
+  id: "ch03-riemann-sphere",
+  kicker: 'Drag <span class="k3">z</span> and the blue circle on the left; see them on the sphere on the right.',
+  planes: [{ R: 3, title: "complex plane" }, { R: 1.75, grid: false, unit: false, title: "Riemann sphere" }],
+  explain: `
+  <h2>Stereographic projection</h2>
+  <p>Place the unit sphere so that its equator is the unit circle of the complex plane. Join the north pole <i>N</i> to a point <i>z</i> of the plane by a straight line: it crosses the sphere at exactly one other point <i>ẑ</i>. Points inside the unit circle land on the southern hemisphere, points outside on the northern one, and as |<i>z</i>| → ∞ the image climbs to <i>N</i>. So the sphere is the plane with one extra point, ∞, added at the north pole.</p>
+  <p>In coordinates, <i>z</i> = <i>x</i> + <i>iy</i> goes to (2<i>x</i>, 2<i>y</i>, |<i>z</i>|² − 1) / (|<i>z</i>|² + 1).</p>
+  <h2>Circles stay circles</h2>
+  <p>Drag the blue circle: its image on the sphere is again a circle. Lines in the plane become circles through <i>N</i>. Circles centred at 0 become lines of latitude and rays from 0 become meridians (turn on the grid). Stereographic projection is also conformal. These two facts make the sphere the natural stage for Möbius transformations.</p>`,
+});
+const [zp, sp] = P.planes, ui = P.ui;
+zp.handle("z", { x: 1.6, y: 0.9 }, { color: "c3", label: "z" });
+zp.handle("O", { x: -1.2, y: -0.6 }, { color: "c1" });
+zp.handle("Q", { x: -0.5, y: -0.6 }, { color: "c1" });
+const az = ui.slider("Turn", -180, 180, 1, -35, v => v + "°");
+const el = ui.slider("Tilt", 0, 90, 1, 22, v => v + "°");
+const grid = ui.check("Latitude / longitude grid", true);
+const circ = ui.check("Blue circle", true);
+const spin = VCA.anim(dt => { let v = az.value + 20 * dt; if (v > 180) v -= 360; az.value = v; });
+ui.toggle("Rotate", spin);
+
+const stereo = z => { const d = C.abs2(z) + 1; return [2 * z.x / d, 2 * z.y / d, (C.abs2(z) - 1) / d]; };
+function proj([x, y, z]) {
+  const a = az.value * Math.PI / 180, e = el.value * Math.PI / 180;
+  const x1 = x * Math.cos(a) - y * Math.sin(a), y1 = x * Math.sin(a) + y * Math.cos(a);
+  return { p: { x: x1, y: y1 * Math.sin(e) + z * Math.cos(e) }, d: -y1 * Math.cos(e) + z * Math.sin(e) };
+}
+// draw a curve on the sphere: front part solid, back part faint and dashed
+function sphereCurve(pts3, s) {
+  let run = [], front = null;
+  const flush = () => { if (run.length > 1) sp.path(run, front ? s : Object.assign({}, s, { dash: "3 4", opacity: 0.35, width: (s.width || 2) * 0.7 })); };
+  for (const q of pts3) {
+    const { p, d } = proj(q), f = d >= 0;
+    if (front !== null && f !== front) { run.push(p); flush(); run = [run[run.length - 1]]; }
+    front = f; run.push(p);
+  }
+  flush();
+}
+const planeCurve = (pts, s) => sp.path(pts.map(z => proj([z.x, z.y, 0]).p), s);
+
+VCA.run(() => {
+  const N = [0, 0, 1];
+  // plane square and axes in 3D
+  planeCurve([{ x: -1.6, y: -1.6 }, { x: 1.6, y: -1.6 }, { x: 1.6, y: 1.6 }, { x: -1.6, y: 1.6 }, { x: -1.6, y: -1.6 }], { color: "axis", width: 1, jump: Infinity });
+  planeCurve([{ x: -1.6, y: 0 }, { x: 1.6, y: 0 }], { color: "axis", width: 1 });
+  planeCurve([{ x: 0, y: -1.6 }, { x: 0, y: 1.6 }], { color: "axis", width: 1 });
+  sp.circle(C.ZERO, 1, { color: "muted", width: 1.5, fill: "f6" });
+  const ring = n => Array.from({ length: n + 1 }, (_, i) => i / n * VCA.TAU);
+  sphereCurve(ring(120).map(t => [Math.cos(t), Math.sin(t), 0]), { color: "c5", width: 2 });
+  zp.circle(C.ZERO, 1, { color: "c5", width: 1.5 });
+  if (grid.value) {
+    for (const r of [0.27, 0.58, 1.73, 3.73]) {
+      zp.circle(C.ZERO, r, { color: "c6", width: 1, opacity: 0.7 });
+      sphereCurve(ring(90).map(t => stereo(C.polar(r, t))), { color: "c6", width: 1.2 });
+    }
+    for (let k = 0; k < 12; k++) {
+      const a = k * Math.PI / 6;
+      zp.line(C.ZERO, C.polar(10, a), { color: "c6", width: 1, opacity: 0.5 });
+      sphereCurve(Array.from({ length: 81 }, (_, i) => { const t = -Math.PI / 2 + Math.PI * i / 80; return [Math.cos(t) * Math.cos(a), Math.cos(t) * Math.sin(a), Math.sin(t)]; }), { color: "c6", width: 1.2 });
+    }
+  }
+  if (circ.value) {
+    const c = zp.get("O"), r = C.dist(c, zp.get("Q"));
+    zp.circle(c, r, { color: "c1", width: 2.5 });
+    planeCurve(ring(120).map(t => C.add(c, C.polar(r, t))), { color: "c1", width: 1, opacity: 0.5 });
+    sphereCurve(ring(240).map(t => stereo(C.add(c, C.polar(r, t)))), { color: "c1", width: 2.6 });
+  }
+  zp.handles.O.hidden = zp.handles.Q.hidden = !circ.value;
+  const z = zp.get("z"), s3 = stereo(z), zs = proj([z.x, z.y, 0]).p, ss = proj(s3), np = proj(N).p;
+  sp.line(np, zs, { color: "c3", width: 1.3, dash: "5 4" });
+  sp.dot(zs, { color: "c3", r: 4 });
+  sp.dot(ss.p, { color: "c3", r: 6.5, opacity: ss.d >= 0 ? 1 : 0.5 });
+  sp.label(ss.p, "ẑ", "c3", 16, C.ZERO, { size: 18 });
+  sp.dot(np, { color: "ink", r: 4.5 });
+  sp.text(np, "N (∞)", { dy: -10, size: 15 });
+  P.read(row("z", "c3", `${C.fmt(z)}<br><span class="sub">|z| = ${num(C.abs(z))}</span>`) +
+    row("ẑ", "c3", `(${s3.map(v => num(v)).join(", ")})`) +
+    `<hr><div class="sub">${C.abs(z) < 1 ? "Inside the unit circle → southern hemisphere." : "Outside the unit circle → northern hemisphere."}</div>`);
+});

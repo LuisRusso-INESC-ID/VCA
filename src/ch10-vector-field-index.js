@@ -1,0 +1,49 @@
+const { C, num, row } = VCA;
+const P = VCA.page({
+  id: "ch10-vector-field-index",
+  kicker: 'Drag the zeros of the field and the purple loop. The index is how many times the field turns as you go round.',
+  planes: [{ R: 2.5, unit: false }],
+  explain: `
+  <h2>The index of a zero</h2>
+  <p>Walk once counterclockwise around a loop and watch the direction of the vector field (the compass in the corner). The net number of turns it makes is the <b>index</b> of the field along the loop. Around a single zero shaped like <i>z</i> − <i>a</i> (a source, sink or centre) the field turns once, so the index is +1. A saddle, shaped like the conjugate, turns once the other way (−1), and (<i>z</i> − <i>a</i>)² has index +2.</p>
+  <p>Like winding numbers, the index along a loop is the <b>sum of the indices of the zeros inside</b>. You cannot change it without dragging a zero across the loop. This is the topological heart of the Poincaré–Hopf theorem: on a sphere the indices of any tangent field add up to 2, so every such field must vanish somewhere ("you cannot comb a hairy ball").</p>`,
+});
+const [pl] = P.planes, ui = P.ui;
+const Z0 = [{ x: -0.9, y: 0.4 }, { x: 0.8, y: 0.5 }, { x: 0.1, y: -0.9 }];
+const types = [];
+Z0.forEach((p, i) => {
+  pl.handle("z" + i, p, { color: ["c1", "c2", "c4"][i], label: ["a", "b", "c"][i] });
+  types.push(ui.select(`Zero ${["a", "b", "c"][i]}`, [["1", "+1: z − a (source-like)"], ["-1", "−1: conj (saddle)"], ["2", "+2: (z − a)²"], ["0", "off"]], ["1", "-1", "1"][i]));
+});
+pl.handle("c", { x: 0.2, y: 0.1 }, { color: "c3", label: "L" });
+const rad = ui.slider("Loop radius", 0.2, 2.3, 0.01, 1.2, v => v.toFixed(2));
+const rotS = ui.slider("Rotate field", -180, 180, 5, 0, v => v + "°");
+const mv = VCA.anim(() => {});
+ui.toggle("Walk the loop", mv);
+setTimeout(() => mv.start(), 300);
+
+VCA.run(() => {
+  const zs = Z0.map((_, i) => pl.get("z" + i)), ty = types.map(t => +t.value), spin = C.polar(1, rotS.value * Math.PI / 180);
+  zs.forEach((_, i) => { pl.handles["z" + i].hidden = ty[i] === 0; });
+  const V = z => { let w = spin; zs.forEach((a, i) => { const d = C.sub(z, a); if (ty[i] === 1) w = C.mul(w, d); else if (ty[i] === -1) w = C.mul(w, C.conj(d)); else if (ty[i] === 2) w = C.mul(w, C.mul(d, d)); }); return w; };
+  const n = 19, step = 2 * pl.R / n;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const z = { x: -pl.R + (i + 0.5) * step, y: -pl.R + (j + 0.5) * step }, v = V(z), m = C.abs(v);
+    if (m < 1e-9) continue;
+    const u = C.scale(v, 0.38 * step / m);
+    pl.arrow(C.sub(z, C.scale(u, 0.5)), C.add(z, C.scale(u, 0.5)), { color: "c6", width: 1.4, head: 6, opacity: 0.3 + 0.7 * Math.min(1, m / 1.5) });
+  }
+  const c = pl.get("c"), r = rad.value;
+  pl.circle(c, r, { color: "c3", width: 2.5 });
+  const pts = []; for (let k = 0; k < 400; k++) pts.push(V(C.add(c, C.polar(r, VCA.TAU * k / 400))));
+  const index = VCA.winding(pts, C.ZERO);
+  for (let k = 0; k < 16; k++) { const z = C.add(c, C.polar(r, VCA.TAU * k / 16)), u = C.scale(C.unit(V(z)), 0.28); pl.arrow(z, C.add(z, u), { color: "c3", width: 2.4, head: 8 }); }
+  const t = mv.t * 0.7, z = C.add(c, C.polar(r, t)), u = C.unit(V(z));
+  pl.dot(z, { color: "c5", r: 6 });
+  const comp = pl.W(540, 60), cr = 40 / pl.k;
+  pl.circle(comp, cr, { color: "muted", width: 1.5, fill: "paper", layer: "front" });
+  pl.arrow(comp, C.add(comp, C.scale(u, cr * 0.9)), { color: "c5", width: 3, layer: "front" });
+  const inside = zs.reduce((s, a, i) => s + (C.dist(a, c) < r ? ty[i] : 0), 0);
+  P.read(`<div class="big">Index along the loop: <b>${index}</b></div><hr><div class="${index === inside ? "ok" : "bad"}">Sum of indices of zeros inside: ${inside}</div>` +
+    zs.map((a, i) => ty[i] ? `<div class="sub">${["a", "b", "c"][i]}: index ${ty[i] > 0 ? "+" : ""}${ty[i]}, ${C.dist(a, c) < r ? "inside" : "outside"}</div>` : "").join(""));
+});

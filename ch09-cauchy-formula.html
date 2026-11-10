@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cauchy's integral formula — Visual Complex Analysis</title>
+<meta name="description" content="Values on a circle determine the inside.">
+<link rel="stylesheet" href="lib/vca.css">
+<script src="lib/vca.js"></script>
+</head>
+<body>
+<script>
+const { C, num, row } = VCA;
+const P = VCA.page({
+  id: "ch09-cauchy-formula",
+  kicker: 'The values of f on the circle determine f at every point inside. Drag <span class="k2">a</span> and the circle.',
+  planes: [{ R: 2.5, title: "z-plane" }, { R: 4, title: "w = f(z)" }],
+  explain: `
+  <h2>Cauchy's formula</h2>
+  <p>If <i>f</i> is analytic on and inside a loop <i>L</i>, then for every point <i>a</i> inside</p>
+  <p style="text-align:center"><i>f</i>(<i>a</i>) = (1/2π<i>i</i>) ∮<sub>L</sub> <i>f</i>(<i>z</i>)/(<i>z</i> − <i>a</i>) d<i>z</i>.</p>
+  <p>An analytic function is so rigid that its boundary values fix everything inside. The coloured dots on the circle and their images on the right are the only data the formula uses, yet it returns the exact value at <i>a</i> (orange diamond). Move <i>a</i> outside the circle and the integral drops to 0.</p>
+  <h2>The mean value property</h2>
+  <p>When <i>a</i> is the centre of a circle, d<i>z</i>/(<i>z</i> − <i>a</i>) = <i>i</i> dθ and the formula becomes a plain average: <i>f</i>(centre) is the average of <i>f</i> around the circle (purple). Try <i>f</i>(<i>z</i>) = 1/(<i>z</i> − 2) and let the circle swallow the pole: both facts fail, because <i>f</i> is no longer analytic inside.</p>`,
+});
+const [zp, wp] = P.planes, ui = P.ui;
+const F = { exp: ["e<sup>z</sup>", C.exp, null], sq: ["z²", z => C.mul(z, z), null], sin: ["sin z", C.sin, null], cub: ["z³ − z", z => C.sub(C.ipow(z, 3), z), null], pole: ["1/(z − 2)", z => C.inv(C.sub(z, { x: 2, y: 0 })), { x: 2, y: 0 }] };
+const fs = ui.select("f(z)", Object.keys(F).map(k => [k, F[k][0].replace(/<\/?sup>/g, m => m === "<sup>" ? "^" : "")]), "exp");
+const rad = ui.slider("Radius", 0.2, 2.2, 0.01, 1, v => v.toFixed(2));
+const samples = ui.check("Coloured sample points", true);
+zp.handle("c", { x: 0, y: 0 }, { color: "c3", label: "centre" });
+zp.handle("a", { x: 0.45, y: 0.35 }, { color: "c2", label: "a" });
+const hues = ["c1", "c2", "c4", "c3", "c5", "c6"];
+
+VCA.run(() => {
+  const [name, f, pole] = F[fs.value], c = zp.get("c"), a = zp.get("a"), r = rad.value;
+  if (pole) zp.cross(pole, { color: "c5", r: 8 });
+  zp.circle(c, r, { color: "ink", width: 2.2, fill: "f6" });
+  wp.curve(t => f(C.add(c, C.polar(r, t))), 0, VCA.TAU, { color: "ink", width: 2, n: 300 });
+  if (samples.value) for (let k = 0; k < 24; k++) {
+    const z = C.add(c, C.polar(r, VCA.TAU * k / 24)), col = hues[k % 6];
+    zp.dot(z, { color: col, r: 4.5 }); wp.dot(f(z), { color: col, r: 4.5 });
+  }
+  const n = 1440; let avg = C.ZERO, cint = C.ZERO;
+  for (let k = 0; k < n; k++) {
+    const t = VCA.TAU * (k + 0.5) / n, e = C.polar(r, t), z = C.add(c, e), fz = f(z);
+    avg = C.add(avg, C.scale(fz, 1 / n));
+    const dz = C.mul(C.I, C.scale(e, VCA.TAU / n));
+    cint = C.add(cint, C.mul(C.div(fz, C.sub(z, a)), dz));
+  }
+  cint = C.div(cint, { x: 0, y: VCA.TAU });
+  const fa = f(a), fc = f(c), inside = C.dist(a, c) < r;
+  const diamond = (p, col) => { const [X, Y] = wp.S(p); wp.spath(`M${X},${Y - 9}L${X + 9},${Y}L${X},${Y + 9}L${X - 9},${Y}Z`, { color: col, fill: col, width: 1 }); };
+  wp.dot(fc, { color: "c3", r: 8, opacity: 0.4 }); wp.dot(avg, { color: "c3", r: 4 });
+  wp.dot(fa, { color: "c2", r: 9, opacity: 0.35 }); diamond(cint, "c2");
+  wp.label(fa, "f(a)", "c2", 20, fc, { size: 16 });
+  const ok1 = C.dist(avg, fc) < 1e-3, ok2 = C.dist(cint, inside ? fa : C.ZERO) < 1e-3;
+  P.read(row("f", "", `<span class="big">${name}</span>`) +
+    row("avg", "c3", `${C.fmt(avg, 4)}<br><span class="sub">f(centre) = ${C.fmt(fc, 4)}</span> <span class="${ok1 ? "ok" : "bad"}">${ok1 ? "✓" : "✗"}</span>`) +
+    row("Cauchy", "c2", `${C.fmt(cint, 4)}<br><span class="sub">${inside ? `f(a) = ${C.fmt(fa, 4)}` : "a is outside: expect 0"}</span> <span class="${ok2 ? "ok" : "bad"}">${ok2 ? "✓" : "✗"}</span>`) +
+    (pole && C.dist(pole, c) < r ? `<hr><div class="bad">The pole at 2 is inside: f is not analytic there.</div>` : ""));
+});
+
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multifunctions and branch points — Visual Complex Analysis</title>
+<meta name="description" content="Loop around 0 and √z, ∛z or log z changes branch.">
+<link rel="stylesheet" href="lib/vca.css">
+<script src="lib/vca.js"></script>
+</head>
+<body>
+<script>
+const { C, num, row } = VCA;
+const P = VCA.page({
+  id: "ch02-multifunctions",
+  kicker: 'Drag <span class="k1">z</span> around the origin. The value you follow continuously ends up on a different branch.',
+  planes: [{ R: 2.2, title: "z-plane" }, { R: 2.2, title: "w-plane" }],
+  explain: `
+  <h2>One input, several outputs</h2>
+  <p>Every nonzero <i>z</i> has two square roots, three cube roots, and infinitely many logarithms (differing by multiples of 2π<i>i</i>). The grey dots on the right show all the candidates. The bold purple point is the one you get by <b>following a single value continuously</b> as <i>z</i> moves.</p>
+  <p>Take <i>z</i> once around a loop that encircles 0: the angle of <i>z</i> grows by 2π, so the angle of √<i>z</i> grows only by π. You come back to the same <i>z</i> but to the <i>other</i> square root. Two loops are needed to return to the start. For ∛<i>z</i> it takes three loops, and log <i>z</i> never returns: each loop adds 2π<i>i</i>. A loop that does not encircle 0 brings you back to where you began.</p>
+  <p>That makes 0 a <b>branch point</b>. To get single-valued branches you must cut the plane, conventionally along the negative real axis (dashed). That is why "principal" functions jump there.</p>`,
+});
+const [zp, wp] = P.planes, ui = P.ui;
+const TAU = VCA.TAU;
+const fsel = ui.select("Function", [["2", "√z"], ["3", "∛z"], ["log", "log z"]], "2", reset);
+zp.handle("z", { x: 1.5, y: 0 }, { color: "c1", label: "z" });
+let cur = null, last = null, zt = [], wt = [], turn = 0;
+function principal(z) { const f = fsel.value; return f === "log" ? C.log(z) : C.pow(z, 1 / +f); }
+function nearest(z, w) {
+  const f = fsel.value, b = principal(z);
+  if (f === "log") return { x: b.x, y: b.y + TAU * Math.round((w.y - b.y) / TAU) };
+  const n = +f; let best = b, bd = Infinity;
+  for (let k = 0; k < n; k++) { const c = C.rot(b, TAU * k / n); const d = C.dist(c, w); if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+function reset() {
+  const z = zp.get("z"); cur = principal(z); last = z; zt = [z]; wt = [cur]; turn = 0;
+  wp.setView(fsel.value === "log" ? 9 : 2.2, fsel.value === "log" ? { x: 0, y: 0 } : null);
+}
+ui.buttons([["Clear trail", reset], ["Restart on principal", () => { cur = principal(zp.get("z")); reset(); }]]);
+let loop = null;
+const go = VCA.anim(dt => {
+  if (!loop) return;
+  loop.t += dt * 1.4;
+  zp.set("z", C.add(loop.c, C.polar(loop.r, loop.a0 + loop.t)));
+}, "loop");
+const startLoop = around => {
+  const z = zp.get("z");
+  const c = around ? C.ZERO : C.add(z, C.scale(C.unit(z), 0.5));
+  loop = { c, r: C.dist(z, c), a0: C.arg(C.sub(z, c)), t: 0 };
+};
+ui.heading("Loops");
+const b1 = ui.buttons([["Loop around 0", () => { startLoop(true); go.start(); }], ["Loop not around 0", () => { startLoop(false); go.start(); }], ["Stop", () => go.stop()]]);
+const cut = ui.check("Show branch cut", true);
+const all = ui.check("Show all values", true);
+zp.onGrab = () => go.stop();
+reset();
+
+VCA.run(() => {
+  const z = zp.get("z");
+  if (C.dist(z, last) > 1e-9) {
+    const steps = 24;
+    for (let i = 1; i <= steps; i++) {
+      const zi = C.lerp(last, z, i / steps);
+      if (C.abs(zi) < 1e-6) continue;
+      cur = nearest(zi, cur);
+      const a = C.sub(zi, C.ZERO), b = C.lerp(last, z, (i - 1) / steps);
+      turn += Math.atan2(C.cross(b, a), C.dot(b, a));
+    }
+    zt.push(z); wt.push(cur); if (zt.length > 4000) { zt.shift(); wt.shift(); }
+    last = z;
+  }
+  if (cut.value) zp.line(C.ZERO, { x: -10, y: 0 }, { color: "c5", width: 2, dash: "6 5", opacity: 0.7 });
+  zp.path(zt, { color: "c1", width: 2, opacity: 0.7, jump: Infinity });
+  wp.path(wt, { color: "c3", width: 2, opacity: 0.7, jump: Infinity });
+  zp.dot(C.ZERO, { r: 4, color: "c5" });
+  const f = fsel.value;
+  if (all.value) {
+    const b = principal(z);
+    if (f === "log") for (let k = -6; k <= 6; k++) wp.dot({ x: b.x, y: b.y + TAU * k }, { color: "muted", r: 4 });
+    else for (let k = 0; k < +f; k++) { const c = C.rot(b, TAU * k / +f); wp.dot(c, { color: "muted", r: 5 }); wp.line(C.ZERO, c, { color: "muted", width: 0.8, dash: "3 3" }); }
+  }
+  wp.dot(cur, { color: "c3", r: 7 });
+  const b = principal(z);
+  let k;
+  if (f === "log") k = Math.round((cur.y - b.y) / TAU);
+  else { const n = +f; k = ((Math.round(C.arg(C.div(cur, b)) / (TAU / n)) % n) + n) % n; }
+  const loops = turn / TAU;
+  P.read(row("z", "c1", C.fmt(z)) + row("w", "c3", C.fmt(cur, 3)) +
+    row("", "", `<span class="sub">Principal value ${C.fmt(b, 3)}</span>`) +
+    `<hr><div>Turns of z around 0: <b>${num(loops, 2)}</b></div>` +
+    `<div>Branch index of w: <b>${k}</b> ${k === 0 ? '<span class="ok">(principal)</span>' : ""}</div>` +
+    `<div class="sub">${f === "log" ? "Each turn adds 2πi." : `Branches cycle every ${f} turns.`}</div>`);
+});
+
+</script>
+</body>
+</html>
