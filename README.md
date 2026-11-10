@@ -83,6 +83,8 @@ affiliated with or endorsed by the author or the publisher, and it reproduces
 no text or figures from the book. Get a copy of the book: these pages
 are meant to be read alongside it.
 
+Author: Luís M. S. Russo, ORCID [0000-0002-1966-1808](https://orcid.org/0000-0002-1966-1808).
+
 The code was written with the help of [Claude Code](https://claude.com/claude-code).
 
 ## License
